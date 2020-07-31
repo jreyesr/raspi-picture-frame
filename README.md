@@ -1,5 +1,7 @@
 # raspi-picture-frame
 
+See [here](https://jreyesr.github.io/raspi-picture-frame/) for a more detailed description.
+
 A writeup of the process to hack an old Kodak picture frame to become
 the screen of a Raspberry Pi.
 
