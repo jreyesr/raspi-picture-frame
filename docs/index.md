@@ -74,12 +74,40 @@ something else.
 
 // TODO picture of finished soldering?
 
-## Step 3: FPGAs, because why not
-
 After the soldering, you get a nice piece of perfboard with 20 wires neatly soldered side to side.
 
-I then used more magnet wire to bring the signals out to a 20x2 pin header, o fthe kind that mates with a Raspberry Pi GPIO connector. 
-See the next section for more information. That gives me a usable connection point, since I can now use Dupont wires to connect there.
+I then used more magnet wire to bring the signals out to a 20x2 pin header, of the kind that mates with a Raspberry Pi GPIO connector. 
+That gives me a usable connection point, since I can now use Dupont wires to connect there.
+
+### The big table
+
+The full connection list is:
+
+| RPi GPIO header | TFT                    |
+| : ------------- | ---------------------: |
+| Pin 36          | Pin 6 (R2)             |
+| Pin 11          | Pin 7 (R3)             |
+| Pin 12          | Pin 8 (R4)             |
+| Pin 35          | Pin 9 (R5)             |
+| Pin 38          | Pin 10 (R6)            |
+| Pin 40          | Pin 11 (R7)            |
+| Pin 19          | Pin 14 (G2)            |
+| Pin 23          | Pin 15 (G3)            |
+| Pin 32          | Pin 16 (G4)            |
+| Pin 33          | Pin 17 (G5)            |
+| Pin 8           | Pin 18 (G6)            |
+| Pin 10          | Pin 19 (G7)            |
+| Pin 7           | Pin 22 (B2)            |
+| Pin 29          | Pin 23 (B3)            |
+| Pin 31          | Pin 24 (B4)            |
+| Pin 26          | Pin 25 (B5)            |
+| Pin 24          | Pin 26 (B6)            |
+| Pin 21          | Pin 27 (B7)            |
+| Pin 27          | Pin 28 (DCLK)          |
+| Pin 28          | Pin 29 (DEN)           |
+| Any GND pin     | The picture frame GND  |
+
+## Step 3: FPGAs, because why not
 
 The first task is making sure the display works. I used a [TinyFPGA AX2](https://store.tinyfpga.com/products/tinyfpga-a2), 
 because I had it around and FPGAs are fun. That just requires three signals: one color, CLK and DEN.
@@ -100,10 +128,7 @@ The connections end up as follows:
 | Pin 6          | Pin 27          | Pin 28 (DCLK)         |
 | Pin 1          | Any GND pin     | The picture frame GND |
 
-Disregard the middle column. It will be useful later. If you wish to replicate this, just ensure that the FPGA pins in the left side connect to the LCD pins 
-on the right side.
-
-Also ensure that the grounds are connected. I didn't have to do it, because I powered the FPGA from a USB port in the picture frame, so the ground is shared.
+Ensure that the grounds are connected. I didn't have to do it, because I powered the FPGA from a USB port in the picture frame, so the ground is shared.
 
 Power on the picture frame. If all goes well, you should see three color bars and a happy face happily bouncing around the screen. That confirms that the LCD
 display is working (i.e. not fried)
@@ -158,16 +183,85 @@ display_default_lcd=1
 dpi_group=2
 dpi_mode=82
 ```
-1. 
+1. Power down, connect the cables and power on. Connect a VGA monitor. It should come alive and display the Raspberry Pi desktop.
+1. If it does work, it's time for changing some configurations. `vga666` doesn't expose the DEN and DCLK pins, which are required here. The `dpi24` 'fat' overlay is needed for that. Change the configuration of two steps above to:
+```
+dtoverlay=dpi24
+enable_dpi_lcd=1
+display_default_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=458773
+hdmi_timings=800 1 40 128 88 600 0 1 4 23 0 0 0 60 0 39790080 1
+```
+
+// TODO VGA adapter photo
+
+// TODO LCD monitor photo
+
+### The mysterious config parameter
+
+The last two lines are
+```
+dpi_output_format=458773
+hdmi_timings=800 1 40 128 88 600 0 1 4 23 0 0 0 60 0 39790080 1
+```
+
+Those lines come from [a spreadsheet made by Robert Ely](https://docs.google.com/spreadsheets/d/15KRhR_ewzdGEeD576rL36FbblRVt5HGhNZakOgW-zg4/edit?usp=sharing).
+The first parameter, `dpi_output_format`, is unchanged. For the second one, `hdmi_timings`, I had to change `v_active_lines` to 600, `v_front_porch` to 1,
+`v_sync_pulse` to 4 and `v_back_porch` to 23, as specified in the datasheet for the panel.
+
+I also changed the formula for `pixel_freq`. In the original spreadsheet, it's just `h_active_pixels*v_active_lines*frame_rate`, which is 800x480x60, and I'm quite sure
+that the formula should also include the inactive pixels from the front/back porches and the sync pulses (which also lines up nicely with the data
+[here](http://www.tinyvga.com/vga-timing/800x600@60Hz)). I ended up with a nearly 40MHz clock.
 
 ## Step 5: Let there be image
 
+The header that receives the wires from the picture frame (on the very first table, above) works with the `config.txt` above. Plug it into the Raspberry Pi header,
+reboot, and hope that it works.
+
+// TODO picture
+
 ## Step 6: Packaging
+
+// TODO
+
+// TODO picture frame photo
 
 ## Step 7: ?
 
+At this point, the Raspberry has a full-fledged monitor. A mouse and keyboard later, it's a complete PC with Internet access.
+
+// TODO more augmentations
+
 ## Conclusions
+
+* 
 
 ## TL;DR
 
+If you happen to have a A080SN01 LCD panel that you want to repurpose, do the following:
+* You need the board which previously drove the LCD panel, because multiple voltage sources and the LED driver are required.
+* Intercept the R, G, B, CLK and DEN signals (which are on pins 4 to 29 of the flex connector)
+* Connect them to a 40-pin 20x2 header according to the first table [here](#the-big-table)
+* Edit `/boot/config.txt` in the Raspberry to include 
+```
+dtoverlay=dpi24
+enable_dpi_lcd=1
+display_default_lcd=1
+dpi_group=2
+dpi_mode=87
+dpi_output_format=458773
+hdmi_timings=800 1 40 128 88 600 0 1 4 23 0 0 0 60 0 39790080 1
+```
+* Reboot and pray.
+
 ## Useful resources
+
+* [Robert Ely's article "Let’s add a dirt cheap screen to the Raspberry Pi B+"](http://blog.reasonablycorrect.com/raw-dpi-raspberry-pi/)
+* [The AU80SN01 LCD panel datasheet](http://www.yslcd.com.tw/docs/product/A080SN01%20V.9.pdf)
+* [The official DPI documentation](https://www.raspberrypi.org/documentation/hardware/raspberrypi/dpi/README.md)
+* [Screen timings](http://www.tinyvga.com/vga-timing/800x600@60Hz)
+* [A spreadsheet that autogenerates config.txt values](https://docs.google.com/spreadsheets/d/15KRhR_ewzdGEeD576rL36FbblRVt5HGhNZakOgW-zg4/edit#gid=0)
+* [The pinout when using `vga666`](https://pinout.xyz/pinout/gertvga_666)
+* [The pinout when using the full `dpi24` overlay](https://pinout.xyz/pinout/dpi)
